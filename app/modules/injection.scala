@@ -1,69 +1,108 @@
 package modules
 
-import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
 import com.google.inject.AbstractModule
+import com.opencsv.CSVReader
 import models.Restaurant
 import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase}
 import play.api.libs.concurrent.AkkaGuiceSupport
-import play.api.mvc.Results.InternalServerError
 
-import scala.io.Source
+import java.io.{File, FileReader}
 
-class injection  extends AbstractModule with AkkaGuiceSupport {
+class injection extends AbstractModule with AkkaGuiceSupport {
 
 
-  override def configure(): Unit = {
-
+  def loadCSVData(filePath: String, batchSize: Int): Unit = {
     val mongoClient: MongoClient = MongoClient()
     val database: MongoDatabase = mongoClient.getDatabase("test")
     val collection: MongoCollection[Document] = database.getCollection("Restaurants")
 
-    val csvFile = "/home/svinayakamnigam/Downloads/chainness_point_2021_part3.csv"
-    val source = Source.fromFile(csvFile)
-    val lines = source.getLines().toList
-    source.close()
+    val csvFile = new File(filePath)
+    val csvReader = new CSVReader(new FileReader(csvFile))
 
-    val header :: rows = lines
-    val restaurants = rows.map(row => {
-      val values = row.split(",").map(_.trim)
-      Restaurant(
-        values(0),
-        values(1),
-        values(2),
-        values(3),
-        values(4),
-        values(5),
-        values(6),
-        values(7),
-        values(8),
-        values(9),
-        values(10),
-        values(11),
-        values(12),
-        values(13)
-      )
-    })
+    try {
+      var count = 0
+      var rows = Seq[Restaurant]()
 
-    val documents = restaurants.map(restaurant => {
-      Document(
-        "restaurantName" -> restaurant.restaurantName,
-        "cuisine" -> restaurant.cuisine,
-        "openHours" -> restaurant.openHours,
-        "state" -> restaurant.state,
-        "cntyGeoid" -> restaurant.cntyGeoid,
-        "cntyName" -> restaurant.cntyName,
-        "uaGeoid" -> restaurant.uaGeoid,
-        "uaName" -> restaurant.uaName,
-        "msaGeoid" -> restaurant.msaGeoid,
-        "msaName" -> restaurant.msaName,
-        "lon" -> restaurant.lon,
-        "lat" -> restaurant.lat,
-        "frequency" -> restaurant.frequency,
-        "isChain" -> restaurant.isChain
-      )
-    })
+      var line: Array[String] = csvReader.readNext()
 
-    collection.insertMany(documents).toFuture()
+      while (line != null) {
+        val user = Restaurant(
+          line(0),
+          line(1),
+          line(2),
+          line(3),
+          line(4),
+          line(5),
+          line(6),
+          line(7),
+          line(8),
+          line(9),
+          line(10),
+          line(11),
+          line(12),
+          line(13)
+        )
+
+        rows = rows :+ user
+        count += 1
+
+        if (count % batchSize == 0) {
+          val documents = rows.map(restaurant =>
+            Document(
+              "restaurantName" -> restaurant.restaurantName,
+              "cuisine" -> restaurant.cuisine,
+              "openHours" -> restaurant.openHours,
+              "state" -> restaurant.state,
+              "cntyGeoid" -> restaurant.cntyGeoid,
+              "cntyName" -> restaurant.cntyName,
+              "uaGeoid" -> restaurant.uaGeoid,
+              "uaName" -> restaurant.uaName,
+              "msaGeoid" -> restaurant.msaGeoid,
+              "msaName" -> restaurant.msaName,
+              "lon" -> restaurant.lon,
+              "lat" -> restaurant.lat,
+              "frequency" -> restaurant.frequency,
+              "isChain" -> restaurant.isChain
+            )
+          )
+          collection.insertMany(documents).toFuture()
+          rows = Seq[Restaurant]()
+        }
+
+        line = csvReader.readNext()
+      }
+
+      if (rows.nonEmpty) {
+        val documents = rows.map(restaurant =>
+          Document(
+            "restaurantName" -> restaurant.restaurantName,
+            "cuisine" -> restaurant.cuisine,
+            "openHours" -> restaurant.openHours,
+            "state" -> restaurant.state,
+            "cntyGeoid" -> restaurant.cntyGeoid,
+            "cntyName" -> restaurant.cntyName,
+            "uaGeoid" -> restaurant.uaGeoid,
+            "uaName" -> restaurant.uaName,
+            "msaGeoid" -> restaurant.msaGeoid,
+            "msaName" -> restaurant.msaName,
+            "lon" -> restaurant.lon,
+            "lat" -> restaurant.lat,
+            "frequency" -> restaurant.frequency,
+            "isChain" -> restaurant.isChain
+          )
+        )
+        collection.insertMany(documents).toFuture()
+      }
+    } finally {
+      csvReader.close()
+      mongoClient.close()
+    }
+  }
+
+
+  override def configure(): Unit = {
+
+    loadCSVData("C:\\Users\\ripsingh\\Desktop\\Scala\\data.csv", 100)
   }
 
 }
