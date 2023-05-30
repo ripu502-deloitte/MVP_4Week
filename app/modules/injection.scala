@@ -2,11 +2,12 @@ package modules
 
 import com.google.inject.AbstractModule
 import com.opencsv.CSVReader
-import models.Restaurant
+import models.{Location, Restaurant}
 import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase}
 import play.api.libs.concurrent.AkkaGuiceSupport
 
 import java.io.{File, FileReader}
+import scala.io.Source
 
 class injection extends AbstractModule with AkkaGuiceSupport {
 
@@ -19,13 +20,16 @@ class injection extends AbstractModule with AkkaGuiceSupport {
     val csvFile = new File(filePath)
     val csvReader = new CSVReader(new FileReader(csvFile))
 
+
     try {
       var count = 0
       var rows = Seq[Restaurant]()
 
       var line: Array[String] = csvReader.readNext()
+      line = csvReader.readNext()
 
       while (line != null) {
+        val location=Location(line(10).toDouble,line(11).toDouble)
         val user = Restaurant(
           line(0),
           line(1),
@@ -40,7 +44,8 @@ class injection extends AbstractModule with AkkaGuiceSupport {
           line(10),
           line(11),
           line(12),
-          line(13)
+          line(13),
+          location
         )
 
         rows = rows :+ user
@@ -62,7 +67,11 @@ class injection extends AbstractModule with AkkaGuiceSupport {
               "lon" -> restaurant.lon,
               "lat" -> restaurant.lat,
               "frequency" -> restaurant.frequency,
-              "isChain" -> restaurant.isChain
+              "isChain" -> restaurant.isChain,
+            "location" -> Document(
+                "latitude" -> restaurant.location.latitude,
+                "longitude" -> restaurant.location.longitude
+              )
             )
           )
           collection.insertMany(documents).toFuture()
@@ -88,7 +97,11 @@ class injection extends AbstractModule with AkkaGuiceSupport {
             "lon" -> restaurant.lon,
             "lat" -> restaurant.lat,
             "frequency" -> restaurant.frequency,
-            "isChain" -> restaurant.isChain
+            "isChain" -> restaurant.isChain,
+            "location" -> Document(
+              "latitude" -> restaurant.location.latitude,
+              "longitude" -> restaurant.location.longitude
+            )
           )
         )
         collection.insertMany(documents).toFuture()

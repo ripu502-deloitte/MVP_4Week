@@ -14,5 +14,6 @@ case class Restaurant(
                        lon: String,
                        lat: String,
                        frequency: String,
-                       isChain: String
+                       isChain: String,
+                       location: Location
                      )
