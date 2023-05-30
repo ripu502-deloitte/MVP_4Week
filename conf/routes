@@ -12,3 +12,4 @@ GET     /assets/*file               controllers.Assets.versioned(path="/public",
 
 
 GET     /restaurants/search/:state     controllers.RestaurantController.searchByState(state: String)
+GET     /filterByCuisine/:cuisine   controllers.RestaurantController.searchByCuisine(cuisine: String)
