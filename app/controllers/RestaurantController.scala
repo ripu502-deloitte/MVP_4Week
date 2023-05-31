@@ -69,12 +69,9 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
       }
   }
 
-  def SearchRestaurantsNearby(): Action[AnyContent] = Action.async { implicit request: Request[AnyContent] =>
+  def SearchRestaurantsNearby(longitude:Double, latitude: Double): Action[AnyContent] = Action.async { implicit request: Request[AnyContent] =>
 
-    val longitude: Double = -96.726425
-    val latitude: Double = 46.87762
     val maxDistance: Double = 5000.00000 // Maximum distance in meters
-
 
     val query: Document = Document("location" -> Document(
       "$nearSphere" -> Document(
