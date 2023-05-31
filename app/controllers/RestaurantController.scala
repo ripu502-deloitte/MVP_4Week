@@ -1,23 +1,14 @@
 package controllers
-import javax.inject.Inject
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.io.Source
-import play.api.mvc._
-import play.api.libs.json._
-import org.mongodb.scala.{Document, _}
-import org.mongodb.scala.bson._
+
 import models.{Location, Restaurant}
-import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Filters.{near, nearSphere}
-import org.mongodb.scala.model.Projections
-import org.mongodb.scala.model.geojson.{Point, Position}
+import org.mongodb.scala.{Document, _}
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
+import play.api.libs.json._
+import play.api.mvc._
 
-import org.mongodb.scala.model.Filters
-import org.mongodb.scala.model.Projections
+import javax.inject.Inject
+import scala.concurrent.ExecutionContext
 
-
-import scala.concurrent.duration.DurationInt
 
 class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(cc) {
 
@@ -106,40 +97,48 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
         case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
       }
   }
-  def SearchRestaurantsNearby(): Action[AnyContent] = Action { implicit request: Request[AnyContent] => {
-    val minDistanceMiles = 0
-
-    //    val queryFilter: Bson = nearSphere("location", long, minDistanceMiles / 3963.2)
-    //
-    //    val query = collection.find(queryFilter)
-
-    val query = collection.find(near("location", new Point(new Position(-81.100044, 29.309608)), Some(minDistanceMiles / 3963.2), Some(2 / 3963.2)))
-    val result = Await.result(query.toFuture(), 10.seconds)
-    result.foreach(println)
 
 
-//    val latitude: Double = 37.7749 // Replace with desired latitude
-//    val longitude: Double = -122.4194 // Replace with desired longitude
-//    val maxDistance: Int = 5000 // Replace with desired maximum distance in meters
-//    val filter = Filters.geoWithinCenterSphere(
-//      "location",
-//      longitude,
-//      latitude,
-//      maxDistance.toDouble / 6371 // Convert distance from meters to radians
-//    )
-//
-//    val projection = Projections.excludeId() // Exclude the MongoDB document ID from the result
-//
-//    val queryObservable: Observable[Document] = collection.find(filter).projection(projection)
-//
-//    val resultFuture: Future[Seq[Document]] = queryObservable.toFuture()
-//
-//    println(resultFuture)
+
+  def SearchRestaurantsNearby(longitude:Double, latitude: Double): Action[AnyContent] = Action.async { implicit request: Request[AnyContent] =>
+
+    val maxDistance: Double = 5000.00000 // Maximum distance in meters
 
 
-    Ok("hello")
-  }
+    val query: Document = Document("location" -> Document(
+      "$nearSphere" -> Document(
+        "$geometry" -> Document(
+          "type" -> "Point",
+          "coordinates" -> List(longitude, latitude)
+        ),
+        "$maxDistance" -> maxDistance
+      )
+    ))
 
-
+    collection.find(query).toFuture().map(documents => {
+      val restaurants = documents.map(document => {
+        Restaurant(
+          document.getString("restaurantName"),
+          document.getString("cuisine"),
+          document.getString("openHours"),
+          document.getString("state"),
+          document.getString("cntyGeoid"),
+          document.getString("cntyName"),
+          document.getString("uaGeoid"),
+          document.getString("uaName"),
+          document.getString("msaGeoid"),
+          document.getString("msaName"),
+          document.getString("lon"),
+          document.getString("lat"),
+          document.getString("frequency"),
+          document.getString("isChain"),
+          Location(document.getString("lat").toDouble, document.getString("lon").toDouble))
+      })
+      Ok(Json.toJson(restaurants))
+    })
+      .recover {
+        case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
+      }
   }
 }
+

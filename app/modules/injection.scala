@@ -3,11 +3,13 @@ package modules
 import com.google.inject.AbstractModule
 import com.opencsv.CSVReader
 import models.{Location, Restaurant}
+import org.mongodb.scala.model.Indexes
 import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase}
 import play.api.libs.concurrent.AkkaGuiceSupport
 
 import java.io.{File, FileReader}
-import scala.io.Source
+import java.util.concurrent.Executors
+import scala.concurrent.ExecutionContext
 
 class injection extends AbstractModule with AkkaGuiceSupport {
 
@@ -19,6 +21,7 @@ class injection extends AbstractModule with AkkaGuiceSupport {
 
     val csvFile = new File(filePath)
     val csvReader = new CSVReader(new FileReader(csvFile))
+
 
 
     try {
@@ -115,7 +118,26 @@ class injection extends AbstractModule with AkkaGuiceSupport {
 
   override def configure(): Unit = {
 
+
     loadCSVData("/home/nikhlnu/Downloads/mergedHotel.csv", 500)
+
+    val mongoClient: MongoClient = MongoClient()
+    val database: MongoDatabase = mongoClient.getDatabase("test")
+    val collection: MongoCollection[Document] = database.getCollection("Restaurants")
+//    val ec:ExecutionContext= new ExecutionContext {
+//      override def execute(runnable: Runnable): Unit = ???
+//
+//      override def reportFailure(cause: Throwable): Unit = ???
+//    }
+    val executorService = Executors.newFixedThreadPool(1)
+    implicit val ec = ExecutionContext.fromExecutor(executorService)
+
+    loadCSVData("/home/surabroy/Downloads/merge-csv.com__64647fa425e55.csv", 500)
+
+    collection.createIndex(Indexes.geo2dsphere("location")).toFuture().foreach { indexName =>
+      println(s"Created geospatial index: $indexName")
+    }(ec)
+
   }
 
 }
