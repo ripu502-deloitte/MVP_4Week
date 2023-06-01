@@ -124,15 +124,11 @@ class injection extends AbstractModule with AkkaGuiceSupport {
     val mongoClient: MongoClient = MongoClient()
     val database: MongoDatabase = mongoClient.getDatabase("test")
     val collection: MongoCollection[Document] = database.getCollection("Restaurants")
-//    val ec:ExecutionContext= new ExecutionContext {
-//      override def execute(runnable: Runnable): Unit = ???
-//
-//      override def reportFailure(cause: Throwable): Unit = ???
-//    }
+
     val executorService = Executors.newFixedThreadPool(1)
     implicit val ec = ExecutionContext.fromExecutor(executorService)
 
-    loadCSVData("/home/surabroy/Downloads/merge-csv.com__64647fa425e55.csv", 500)
+    loadCSVData("/home/nikhlnu/Downloads/restaurants.csv", 500)
 
     collection.createIndex(Indexes.geo2dsphere("location")).toFuture().foreach { indexName =>
       println(s"Created geospatial index: $indexName")
