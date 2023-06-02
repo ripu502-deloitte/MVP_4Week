@@ -16,7 +16,6 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
   val database: MongoDatabase = mongoClient.getDatabase("test")
   val collection: MongoCollection[Document] = database.getCollection("Restaurants")
 
-
   implicit val restaurantWrites: Writes[Restaurant] = (
     (JsPath \ "restaurantName").write[String] and
       (JsPath \ "cuisine").write[String] and
@@ -36,61 +35,25 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
 
     ) (unlift(Restaurant.unapply))
 
-
   implicit val restaurantSeqWrites: Writes[Seq[Restaurant]] = Writes.seq(restaurantWrites)
 
   def searchByState(state: String): Action[AnyContent] = Action.async { implicit request =>
     val query = Document("state" -> state.toUpperCase())
     collection.find(query).limit(5).toFuture()
       .map(documents => {
-        val restaurants = documents.map(document => {
-          Restaurant(
-            document.getString("restaurantName"),
-            document.getString("cuisine"),
-            document.getString("openHours"),
-            document.getString("state"),
-            document.getString("cntyGeoid"),
-            document.getString("cntyName"),
-            document.getString("uaGeoid"),
-            document.getString("uaName"),
-            document.getString("msaGeoid"),
-            document.getString("msaName"),
-            document.getString("lon"),
-            document.getString("lat"),
-            document.getString("frequency"),
-            document.getString("isChain"),
-            Location(2.2, 2.4)
-          )
-        })
+        val restaurants = documents.map(document => getRestaurant(document))
         Ok(Json.toJson(restaurants))
       })
       .recover {
         case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
       }
   }
+
   def searchByCuisine(cuisine: String): Action[AnyContent] = Action.async { implicit request =>
     val query = Document("cuisine" -> cuisine.toLowerCase().capitalize)
     collection.find(query).limit(5).toFuture()
       .map(documents => {
-        val restaurants = documents.map(document => {
-          Restaurant(
-            document.getString("restaurantName"),
-            document.getString("cuisine"),
-            document.getString("openHours"),
-            document.getString("state"),
-            document.getString("cntyGeoid"),
-            document.getString("cntyName"),
-            document.getString("uaGeoid"),
-            document.getString("uaName"),
-            document.getString("msaGeoid"),
-            document.getString("msaName"),
-            document.getString("lon"),
-            document.getString("lat"),
-            document.getString("frequency"),
-            document.getString("isChain"),
-            Location(2.2, 2.4)
-          )
-        })
+        val restaurants = documents.map(document => getRestaurant(document))
         Ok(Json.toJson(restaurants))
       })
       .recover {
@@ -99,11 +62,10 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
   }
 
 
-
-  def SearchRestaurantsNearby(longitude:Double, latitude: Double): Action[AnyContent] = Action.async { implicit request: Request[AnyContent] =>
+  def searchRestaurantsNearby(longitude: Double, latitude: Double): Action[AnyContent]
+  = Action.async { implicit request: Request[AnyContent] =>
 
     val maxDistance: Double = 5000.00000 // Maximum distance in meters
-
 
     val query: Document = Document("location" -> Document(
       "$nearSphere" -> Document(
@@ -116,29 +78,32 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
     ))
 
     collection.find(query).toFuture().map(documents => {
-      val restaurants = documents.map(document => {
-        Restaurant(
-          document.getString("restaurantName"),
-          document.getString("cuisine"),
-          document.getString("openHours"),
-          document.getString("state"),
-          document.getString("cntyGeoid"),
-          document.getString("cntyName"),
-          document.getString("uaGeoid"),
-          document.getString("uaName"),
-          document.getString("msaGeoid"),
-          document.getString("msaName"),
-          document.getString("lon"),
-          document.getString("lat"),
-          document.getString("frequency"),
-          document.getString("isChain"),
-          Location(document.getString("lat").toDouble, document.getString("lon").toDouble))
-      })
+      val restaurants = documents.map(document => getRestaurant(document))
       Ok(Json.toJson(restaurants))
     })
       .recover {
         case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
       }
+  }
+
+  private def getRestaurant(document: Document) = {
+    Restaurant(
+      document.getString("restaurantName"),
+      document.getString("cuisine"),
+      document.getString("openHours"),
+      document.getString("state"),
+      document.getString("cntyGeoid"),
+      document.getString("cntyName"),
+      document.getString("uaGeoid"),
+      document.getString("uaName"),
+      document.getString("msaGeoid"),
+      document.getString("msaName"),
+      document.getString("lon"),
+      document.getString("lat"),
+      document.getString("frequency"),
+      document.getString("isChain"),
+      Location(document.getString("lat").toDouble, document.getString("lon").toDouble)
+    )
   }
 }
 
