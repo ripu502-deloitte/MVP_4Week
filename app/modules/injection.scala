@@ -119,7 +119,7 @@ class injection extends AbstractModule with AkkaGuiceSupport {
   override def configure(): Unit = {
 
 
-    loadCSVData("/home/nikhlnu/Downloads/mergedHotel.csv", 500)
+    loadCSVData("/home/nikhlnu/Downloads/restaurants.csv", 500)
 
     val mongoClient: MongoClient = MongoClient()
     val database: MongoDatabase = mongoClient.getDatabase("test")
@@ -127,8 +127,6 @@ class injection extends AbstractModule with AkkaGuiceSupport {
 
     val executorService = Executors.newFixedThreadPool(1)
     implicit val ec = ExecutionContext.fromExecutor(executorService)
-
-    loadCSVData("/home/nikhlnu/Downloads/restaurants.csv", 500)
 
     collection.createIndex(Indexes.geo2dsphere("location")).toFuture().foreach { indexName =>
       println(s"Created geospatial index: $indexName")

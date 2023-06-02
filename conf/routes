@@ -16,3 +16,5 @@ GET     /restaurants/search/:state     controllers.RestaurantController.searchBy
 
 GET     /filterByCuisine/:cuisine   controllers.RestaurantController.searchByCuisine(cuisine: String)
 
+GET     /isOpen/:restaurantId         controllers.RestaurantController.checkRestaurantOpen(restaurantId: Int)
+
