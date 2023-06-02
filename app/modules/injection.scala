@@ -23,7 +23,7 @@ class injection extends AbstractModule with AkkaGuiceSupport {
   val database: MongoDatabase = mongoClient.getDatabase("test")
   val collection: MongoCollection[Document] = database.getCollection("Restaurants")
 
-  def toIPLDetails(line: List[String]): Restaurant = {
+  def toRestaurantModel(line: List[String]): Restaurant = {
     Restaurant(
       line.head,
       line(1),
@@ -44,7 +44,7 @@ class injection extends AbstractModule with AkkaGuiceSupport {
   }
 
   val mappingFlow: Flow[String, Restaurant, NotUsed] = Flow[String].map(line => {
-    toIPLDetails(line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)").toList)
+    toRestaurantModel(line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)").toList)
   })
 
   def insertDataToTables(restaurant: Restaurant): Future[InsertOneResult] = {
@@ -79,18 +79,19 @@ class injection extends AbstractModule with AkkaGuiceSupport {
     val actorSystem = ActorSystem("akka_Assignment")
     implicit val materializer: ActorMaterializer = ActorMaterializer()(actorSystem)
 
-    val executorService = Executors.newFixedThreadPool(1)
+    val executorService = Executors.newFixedThreadPool(20)
     implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(executorService)
 
     FileIO.fromPath(Paths.get("C:\\Users\\ripsingh\\Desktop\\scala\\data.csv"))
       .via(Framing.delimiter(ByteString("\n"), 4096)
         .map(_.utf8String)).drop(1)
       .via(mappingFlow)
-      .mapAsync(10)(ipl => insertDataToTables(ipl))  // Try to change the parallelism
+      .mapAsync(500)(restaurant => insertDataToTables(restaurant)) // Try to change the parallelism
       .run().recover {
       case e: Exception => e.printStackTrace()
     }.onComplete(_ => {
-      collection.createIndex(Indexes.geo2dsphere("location")).toFuture().foreach { indexName =>
+      collection.createIndex(Indexes.geo2dsphere("location"))
+        .toFuture().foreach { indexName =>
         println(s"Created geospatial index: $indexName")
       }
       println("Job Complete.")
