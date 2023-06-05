@@ -6,7 +6,7 @@
 # An example controller showing a sample home page
 GET     /                           controllers.HomeController.index()
 GET     /nearby                       controllers.RestaurantController.SearchRestaurantsNearby(longitude:Double ?= -96.726425, latitude:Double ?= 46.87762 )
-GET     /distance                      controllers.RestaurantController.calculateDistance(userLat:Double ?=46.87762 , userLon:Double ?=-90.726425 )
+GET     /distance                      controllers.RestaurantController.calculateDistance(userLat:Double ?=46.87762 , userLon:Double ?=-96.726425 )
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
