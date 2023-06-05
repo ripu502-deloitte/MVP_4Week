@@ -112,15 +112,29 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
   }
 
   def calculateDistance(userLat: Double, userLon: Double)= Action { implicit request: Request[AnyContent] =>
-
-    val directionsUrl = s"https://api.mapbox.com/directions/v5/mapbox/driving/$userLon,$userLat;-96.73262,46.875854?approaches = curb;curb&access_token=pk.eyJ1IjoiYWFuY2hhbDAxIiwiYSI6ImNsaWlpNHFsZjAwY28zZG1menU4c29jbzAifQ.IBJUQCFFAOs6BM1bPrEk6Q"
+//    val query = Document("id" -> restaurantId)
+//    val rest = collection.find(query).toFuture()
+//      .map(documents => {
+//        val restaurants = documents.map(document => getRestaurant(document))
+//        Ok(Json.toJson(restaurants))
+//      })
+//      .recover {
+//        case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
+//      }
+//    val directionsUrl = s"https://api.mapbox.com/directions/v5/mapbox/driving/$userLon,$userLat;-96.73262,46.875854?approaches = curb;curb&access_token=pk.eyJ1IjoiYWFuY2hhbDAxIiwiYSI6ImNsaWlpNHFsZjAwY28zZG1menU4c29jbzAifQ.IBJUQCFFAOs6BM1bPrEk6Q"
+    val directionsUrl = s"https://api.mapbox.com/directions-matrix/v1/mapbox/driving/$userLon,$userLat;-96.73262,46.875854?sources=0&annotations=distance,duration&approaches = curb;curb&access_token=pk.eyJ1IjoiYWFuY2hhbDAxIiwiYSI6ImNsaWlpNHFsZjAwY28zZG1menU4c29jbzAifQ.IBJUQCFFAOs6BM1bPrEk6Q"
 
     Future {
       val response: HttpResponse[String] = Http(directionsUrl).asString
       val json = Json.parse(response.body)
-      println(json)
-      val distance = (json \ "routes" \\ "distance").headOption.map(_.as[Double])
-      distance.getOrElse(0.0)
+
+      val distance = (json \ "distances")(0)(1).as[Double]
+      val duration = (json \ "durations")(0)(1).as[Double]
+
+      println(s"Distance: $distance meters")
+      println(s"Duration: $duration seconds")
+
+
     }
     Ok("hi")
   }
