@@ -19,6 +19,20 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-json" % "2.9.2"
 )
 
+libraryDependencies += "com.typesafe.play" %% "play-ws" % "2.8.18"
+
+libraryDependencies += "org.scalaj" %% "scalaj-http" % "2.4.2"
+
+libraryDependencies ++= Seq(
+  "com.typesafe.akka" %% "akka-actor" % "2.7.0",
+  "com.typesafe.akka" %% "akka-actor-typed" % "2.7.0",
+  "com.typesafe.akka" %% "akka-slf4j" % "2.7.0",
+  "com.typesafe.akka" %% "akka-protobuf-v3" % "2.7.0",
+  "com.typesafe.akka" %% "akka-stream" % "2.7.0",
+  "com.typesafe.akka" %% "akka-serialization-jackson" % "2.7.0"
+)
+
+
 
 
 // Adds additional packages into Twirl

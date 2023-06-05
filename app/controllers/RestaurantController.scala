@@ -4,10 +4,12 @@ import models.{Location, Restaurant}
 import org.mongodb.scala.{Document, _}
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
 import play.api.libs.json._
+import play.api.libs.ws.WSClient
 import play.api.mvc._
+import scalaj.http.{Http, HttpResponse}
 
 import javax.inject.Inject
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 
 class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(cc) {
@@ -139,6 +141,20 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
       .recover {
         case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
       }
+  }
+
+  def calculateDistance(userLat: Double, userLon: Double)= Action { implicit request: Request[AnyContent] =>
+
+    val directionsUrl = s"https://api.mapbox.com/directions/v5/mapbox/driving/$userLon,$userLat;-96.73262,46.875854?approaches = curb;curb&access_token=pk.eyJ1IjoiYWFuY2hhbDAxIiwiYSI6ImNsaWlpNHFsZjAwY28zZG1menU4c29jbzAifQ.IBJUQCFFAOs6BM1bPrEk6Q"
+
+    Future {
+      val response: HttpResponse[String] = Http(directionsUrl).asString
+      val json = Json.parse(response.body)
+      println(json)
+      val distance = (json \ "routes" \\ "distance").headOption.map(_.as[Double])
+      distance.getOrElse(0.0)
+    }
+    Ok("hi")
   }
 }
 
