@@ -1,136 +1,101 @@
 package modules
 
+import akka.NotUsed
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{FileIO, Flow, Framing}
+import akka.util.ByteString
 import com.google.inject.AbstractModule
-import com.opencsv.CSVReader
 import models.{Location, Restaurant}
 import org.mongodb.scala.model.Indexes
+import org.mongodb.scala.result.InsertOneResult
 import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase}
 import play.api.libs.concurrent.AkkaGuiceSupport
 
-import java.io.{File, FileReader}
+import java.nio.file.Paths
 import java.util.concurrent.Executors
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
+// TODO Use Streams to inject | reference from repo from training
 class injection extends AbstractModule with AkkaGuiceSupport {
 
+  val mongoClient: MongoClient = MongoClient()
+  val database: MongoDatabase = mongoClient.getDatabase("test")
+  val collection: MongoCollection[Document] = database.getCollection("Restaurants")
 
-  def loadCSVData(filePath: String, batchSize: Int): Unit = {
-    val mongoClient: MongoClient = MongoClient()
-    val database: MongoDatabase = mongoClient.getDatabase("test")
-    val collection: MongoCollection[Document] = database.getCollection("Restaurants")
-
-    val csvFile = new File(filePath)
-    val csvReader = new CSVReader(new FileReader(csvFile))
-
-
-
-    try {
-      var count = 0
-      var rows = Seq[Restaurant]()
-
-      var line: Array[String] = csvReader.readNext()
-      line = csvReader.readNext()
-
-      while (line != null) {
-        val location=Location(line(10).toDouble,line(11).toDouble)
-        val user = Restaurant(
-          line(0),
-          line(1),
-          line(2),
-          line(3),
-          line(4),
-          line(5),
-          line(6),
-          line(7),
-          line(8),
-          line(9),
-          line(10),
-          line(11),
-          line(12),
-          line(13),
-          location
-        )
-
-        rows = rows :+ user
-        count += 1
-
-        if (count % batchSize == 0) {
-          val documents = rows.map(restaurant =>
-            Document(
-              "restaurantName" -> restaurant.restaurantName,
-              "cuisine" -> restaurant.cuisine,
-              "openHours" -> restaurant.openHours,
-              "state" -> restaurant.state,
-              "cntyGeoid" -> restaurant.cntyGeoid,
-              "cntyName" -> restaurant.cntyName,
-              "uaGeoid" -> restaurant.uaGeoid,
-              "uaName" -> restaurant.uaName,
-              "msaGeoid" -> restaurant.msaGeoid,
-              "msaName" -> restaurant.msaName,
-              "lon" -> restaurant.lon,
-              "lat" -> restaurant.lat,
-              "frequency" -> restaurant.frequency,
-              "isChain" -> restaurant.isChain,
-            "location" -> Document(
-                "latitude" -> restaurant.location.latitude,
-                "longitude" -> restaurant.location.longitude
-              )
-            )
-          )
-          collection.insertMany(documents).toFuture()
-          rows = Seq[Restaurant]()
-        }
-
-        line = csvReader.readNext()
-      }
-
-      if (rows.nonEmpty) {
-        val documents = rows.map(restaurant =>
-          Document(
-            "restaurantName" -> restaurant.restaurantName,
-            "cuisine" -> restaurant.cuisine,
-            "openHours" -> restaurant.openHours,
-            "state" -> restaurant.state,
-            "cntyGeoid" -> restaurant.cntyGeoid,
-            "cntyName" -> restaurant.cntyName,
-            "uaGeoid" -> restaurant.uaGeoid,
-            "uaName" -> restaurant.uaName,
-            "msaGeoid" -> restaurant.msaGeoid,
-            "msaName" -> restaurant.msaName,
-            "lon" -> restaurant.lon,
-            "lat" -> restaurant.lat,
-            "frequency" -> restaurant.frequency,
-            "isChain" -> restaurant.isChain,
-            "location" -> Document(
-              "latitude" -> restaurant.location.latitude,
-              "longitude" -> restaurant.location.longitude
-            )
-          )
-        )
-        collection.insertMany(documents).toFuture()
-      }
-    } finally {
-      csvReader.close()
-      mongoClient.close()
-    }
+  def toRestaurantModel(line: List[String]): Restaurant = {
+    Restaurant(
+      line.head,
+      line(1),
+      line(2),
+      line(3),
+      line(4),
+      line(5),
+      line(6),
+      line(7),
+      line(8),
+      line(9),
+      line(10),
+      line(11),
+      line(12),
+      line(13),
+      Location(line(10).toDouble, line(11).toDouble)
+    )
   }
 
+  val mappingFlow: Flow[String, Restaurant, NotUsed] = Flow[String].map(line => {
+    toRestaurantModel(line.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)").toList)
+  })
+
+  def insertDataToTables(restaurant: Restaurant): Future[InsertOneResult] = {
+    collection.insertOne(getMongoDocument(restaurant)).toFuture()
+  }
+
+  private def getMongoDocument(restaurant: Restaurant) = {
+    Document(
+      "restaurantName" -> restaurant.restaurantName,
+      "cuisine" -> restaurant.cuisine,
+      "openHours" -> restaurant.openHours,
+      "state" -> restaurant.state,
+      "cntyGeoid" -> restaurant.cntyGeoid,
+      "cntyName" -> restaurant.cntyName,
+      "uaGeoid" -> restaurant.uaGeoid,
+      "uaName" -> restaurant.uaName,
+      "msaGeoid" -> restaurant.msaGeoid,
+      "msaName" -> restaurant.msaName,
+      "lon" -> restaurant.lon,
+      "lat" -> restaurant.lat,
+      "frequency" -> restaurant.frequency,
+      "isChain" -> restaurant.isChain,
+      "location" -> Document(
+        "latitude" -> restaurant.location.latitude,
+        "longitude" -> restaurant.location.longitude
+      )
+    )
+  }
 
   override def configure(): Unit = {
 
+    val actorSystem = ActorSystem("akka_Assignment")
+    implicit val materializer: ActorMaterializer = ActorMaterializer()(actorSystem)
 
-    loadCSVData("/home/nikhlnu/Downloads/restaurants.csv", 500)
+    val executorService = Executors.newFixedThreadPool(20)
+    implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(executorService)
 
-    val mongoClient: MongoClient = MongoClient()
-    val database: MongoDatabase = mongoClient.getDatabase("test")
-    val collection: MongoCollection[Document] = database.getCollection("Restaurants")
-
-    val executorService = Executors.newFixedThreadPool(1)
-    implicit val ec = ExecutionContext.fromExecutor(executorService)
-
-    collection.createIndex(Indexes.geo2dsphere("location")).toFuture().foreach { indexName =>
-      println(s"Created geospatial index: $indexName")
-    }(ec)
+    FileIO.fromPath(Paths.get("C:\\Users\\ripsingh\\Desktop\\scala\\data.csv"))
+      .via(Framing.delimiter(ByteString("\n"), 4096)
+        .map(_.utf8String)).drop(1)
+      .via(mappingFlow)
+      .mapAsync(500)(restaurant => insertDataToTables(restaurant)) // Try to change the parallelism
+      .run().recover {
+      case e: Exception => e.printStackTrace()
+    }.onComplete(_ => {
+      collection.createIndex(Indexes.geo2dsphere("location"))
+        .toFuture().foreach { indexName =>
+        println(s"Created geospatial index: $indexName")
+      }
+      println("Job Complete.")
+    })
 
   }
 
