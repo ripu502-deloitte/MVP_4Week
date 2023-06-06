@@ -14,6 +14,7 @@ import play.api.libs.concurrent.AkkaGuiceSupport
 
 import java.nio.file.Paths
 import java.util.concurrent.Executors
+import scala.collection.convert.ImplicitConversions.`seq AsJavaList`
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
 // TODO Use Streams to inject | reference from repo from training
@@ -24,7 +25,9 @@ class injection extends AbstractModule with AkkaGuiceSupport {
   val collection: MongoCollection[Document] = database.getCollection("Restaurants")
 
   def toRestaurantModel(line: List[String]): Restaurant = {
+    val id = java.util.UUID.randomUUID().toString
     Restaurant(
+      _id = id,
       line.head,
       line(1),
       line(2),
@@ -53,6 +56,7 @@ class injection extends AbstractModule with AkkaGuiceSupport {
 
   private def getMongoDocument(restaurant: Restaurant) = {
     Document(
+      "_id"-> restaurant._id,
       "restaurantName" -> restaurant.restaurantName,
       "cuisine" -> restaurant.cuisine,
       "openHours" -> restaurant.openHours,
@@ -82,7 +86,7 @@ class injection extends AbstractModule with AkkaGuiceSupport {
     val executorService = Executors.newFixedThreadPool(20)
     implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(executorService)
 
-    FileIO.fromPath(Paths.get("/home/nikhlnu/Downloads/restaurants.csv"))
+    FileIO.fromPath(Paths.get("/home/svinayakamnigam/Downloads/merge-csv.com__64647fa425e55.csv"))
       .via(Framing.delimiter(ByteString("\n"), 4096)
         .map(_.utf8String)).drop(1)
       .via(mappingFlow)

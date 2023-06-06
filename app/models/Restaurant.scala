@@ -1,6 +1,7 @@
 package models
 
 case class Restaurant(
+                       _id: String,
                        restaurantName: String,
                        cuisine: String,
                        openHours: String,
