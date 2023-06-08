@@ -144,7 +144,7 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
     val query = Document("_id" -> restId)
     val rest = collection.find(query).toFuture()
     val extractedValue = Await.result(rest, 5.seconds)
-    val doc=extractedValue.head
+    val doc = extractedValue.head
     val openHoursString = doc.getString("openHours")
     val allSlots=openHoursString.split("\\|").map(_.trim)
     val currentDayOfWeek = LocalDate.now().getDayOfWeek.toString
@@ -213,16 +213,16 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
           }
 
           case _ => {
-            println("in _")
-            check = false
+//            println("in _")
+            check = true
           }
         }
 
       }
      if(check) println("open")
      else println("closed")
-
-    Ok("hi")
+    val result = if (check) "Restaurant is Open" else "Restaurant is Closed"
+    Ok(result )
   }
 
 }
