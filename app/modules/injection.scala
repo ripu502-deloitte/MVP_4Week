@@ -42,7 +42,7 @@ class injection extends AbstractModule with AkkaGuiceSupport {
       line(11),
       line(12),
       line(13),
-      Location(line(11).toDouble, line(10).toDouble)
+      Location(line(10).toDouble, line(11).toDouble)
     )
   }
 
@@ -72,8 +72,8 @@ class injection extends AbstractModule with AkkaGuiceSupport {
       "frequency" -> restaurant.frequency,
       "isChain" -> restaurant.isChain,
       "location" -> Document(
-        "latitude" -> restaurant.location.latitude,
-        "longitude" -> restaurant.location.longitude
+        "longitude" -> restaurant.location.longitude,
+        "latitude" -> restaurant.location.latitude
       )
     )
   }
@@ -83,14 +83,14 @@ class injection extends AbstractModule with AkkaGuiceSupport {
     val actorSystem = ActorSystem("akka_Assignment")
     implicit val materializer: ActorMaterializer = ActorMaterializer()(actorSystem)
 
-    val executorService = Executors.newFixedThreadPool(20)
+    val executorService = Executors.newFixedThreadPool(50)
     implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(executorService)
 
     FileIO.fromPath(Paths.get("/home/nikhlnu/Downloads/restaurants.csv"))
       .via(Framing.delimiter(ByteString("\n"), 4096)
         .map(_.utf8String)).drop(1)
       .via(mappingFlow)
-      .mapAsync(500)(restaurant => insertDataToTables(restaurant)) // Try to change the parallelism
+      .mapAsync(800)(restaurant => insertDataToTables(restaurant)) // Try to change the parallelism
       .run().recover {
       case e: Exception => e.printStackTrace()
     }.onComplete(_ => {
