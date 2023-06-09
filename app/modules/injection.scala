@@ -56,7 +56,7 @@ class injection extends AbstractModule with AkkaGuiceSupport {
 
   private def getMongoDocument(restaurant: Restaurant) = {
     Document(
-      "_id"-> restaurant._id,
+      "_id" -> restaurant._id,
       "restaurantName" -> restaurant.restaurantName,
       "cuisine" -> restaurant.cuisine,
       "openHours" -> restaurant.openHours,
@@ -90,17 +90,18 @@ class injection extends AbstractModule with AkkaGuiceSupport {
       .via(Framing.delimiter(ByteString("\n"), 4096)
         .map(_.utf8String)).drop(1)
       .via(mappingFlow)
-      .mapAsync(500)(restaurant => insertDataToTables(restaurant)) // Try to change the parallelism
+      .mapAsync(100)(restaurant => insertDataToTables(restaurant)) // Try to change the parallelism
       .run().recover {
       case e: Exception => e.printStackTrace()
     }.onComplete(_ => {
-      collection.createIndex(Indexes.geo2dsphere("location"))
-        .toFuture().foreach { indexName =>
+      collection.createIndex(Indexes.geo2dsphere("location")).toFuture().foreach { indexName =>
         println(s"Created geospatial index: $indexName")
-      }
-      println("Job Complete.")
+      }(ec)
+      println("done")
     })
 
+    collection.createIndex(Indexes.geo2dsphere("location")).toFuture().foreach { indexName =>
+      println(s"Created geospatial index: $indexName")
+    }(ec)
   }
-
 }

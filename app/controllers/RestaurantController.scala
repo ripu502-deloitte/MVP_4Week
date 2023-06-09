@@ -1,6 +1,7 @@
 package controllers
 
-import models.{Location, Restaurant}
+import models.{Location, Res, Restaurant}
+import org.mongodb.scala.model.Indexes
 import org.mongodb.scala.{Document, _}
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
 import play.api.libs.json._
@@ -24,8 +25,8 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
 
 
   implicit val restaurantWrites: Writes[Restaurant] = (
-    (JsPath \ "_id").write[String] and
-    (JsPath \ "restaurantName").write[String] and
+      (JsPath \ "_id").write[String] and
+      (JsPath \ "restaurantName").write[String] and
       (JsPath \ "cuisine").write[String] and
       (JsPath \ "openHours").write[String] and
       (JsPath \ "state").write[String] and
@@ -77,6 +78,10 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
 
     val maxDistance: Double = 5000.00000 // Maximum distance in meters
 
+    collection.createIndex(Indexes.geo2dsphere("location")).toFuture().foreach { indexName =>
+      println(s"Created geospatial index: $indexName")
+    }(ec)
+    
     val query: Document = Document("location" -> Document(
       "$nearSphere" -> Document(
         "$geometry" -> Document(
@@ -88,7 +93,25 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
     ))
 
     collection.find(query).toFuture().map(documents => {
-      val restaurants = documents.map(document => getRestaurant(document))
+      val restaurants = documents.map(document => {
+        Restaurant(
+          document.getString("_id"),
+          document.getString("restaurantName"),
+          document.getString("cuisine"),
+          document.getString("openHours"),
+          document.getString("state"),
+          document.getString("cntyGeoid"),
+          document.getString("cntyName"),
+          document.getString("uaGeoid"),
+          document.getString("uaName"),
+          document.getString("msaGeoid"),
+          document.getString("msaName"),
+          document.getString("lon"),
+          document.getString("lat"),
+          document.getString("frequency"),
+          document.getString("isChain"),
+          Location(document.getString("lat").toDouble, document.getString("lon").toDouble))
+      })
       Ok(Json.toJson(restaurants))
     })
       .recover {
@@ -124,23 +147,26 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
     val doc=extractedValue.head
     val fieldValue = doc.getString("lon").toDouble
     val otherFieldValue = doc.getString("lat").toDouble
+    var k,v=0.0
 //    println(fieldValue,otherFieldValue)
 
     val directionsUrl = s"https://api.mapbox.com/directions-matrix/v1/mapbox/driving/$userLon,$userLat;$fieldValue,$otherFieldValue?sources=0&annotations=distance,duration&approaches = curb;curb&access_token=pk.eyJ1IjoiYWFuY2hhbDAxIiwiYSI6ImNsaWlpNHFsZjAwY28zZG1menU4c29jbzAifQ.IBJUQCFFAOs6BM1bPrEk6Q"
 
-    Future {
+
       val response: HttpResponse[String] = Http(directionsUrl).asString
       val json = Json.parse(response.body)
 
       val distance = (json \ "distances")(0)(1).as[Double]
       val duration = (json \ "durations")(0)(1).as[Double]
+      k=distance
+      v=duration
 
       println(s"Distance: $distance meters")
       println(s"Duration: $duration seconds")
 
 
-    }
-    Ok("hi")
+    Ok(Json.toJson(Res(k,v)))
+
   }
 
 
@@ -225,10 +251,14 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
         }
 
       }
-     if(check) println("open")
-     else println("closed")
-
-    Ok("hi")
+     if(check) {
+       println("open")
+       Ok("Restaurant is Open")
+     }
+     else {
+       println("closed")
+       Ok("Restaurant is closed")
+     }
   }
 }
 
