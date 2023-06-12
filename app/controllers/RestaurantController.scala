@@ -225,5 +225,30 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
     Ok(result )
   }
 
+  def checkChainRestaurants(longitude: Double, latitude: Double ): Action[AnyContent]
+  = Action.async { implicit request: Request[AnyContent] =>
+
+    val maxDistance: Double = 5000.00000 // Maximum distance in meters
+
+    val query: Document = Document("location" -> Document(
+      "$nearSphere" -> Document(
+        "$geometry" -> Document(
+          "type" -> "Point",
+          "coordinates" -> List(longitude, latitude)
+        ),
+        "$maxDistance" -> maxDistance
+      )
+    ))
+
+    collection.find(query).toFuture().map(documents => {
+      val restaurants = documents.map(document => getRestaurant(document)).filter(x=> x.isChain=="1" )
+
+      Ok(Json.toJson(restaurants))
+    })
+      .recover {
+        case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
+      }
+  }
+
 }
 
