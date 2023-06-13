@@ -1,7 +1,6 @@
 package controllers
 
 import models.{Location, Res, Restaurant}
-import org.mongodb.scala.model.Indexes
 import org.mongodb.scala.{Document, _}
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
 import play.api.libs.json._
@@ -25,8 +24,8 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
 
 
   implicit val restaurantWrites: Writes[Restaurant] = (
-      (JsPath \ "_id").write[String] and
-      (JsPath \ "restaurantName").write[String] and
+    (JsPath \ "_id").write[String] and
+    (JsPath \ "restaurantName").write[String] and
       (JsPath \ "cuisine").write[String] and
       (JsPath \ "openHours").write[String] and
       (JsPath \ "state").write[String] and
@@ -78,10 +77,6 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
 
     val maxDistance: Double = 5000.00000 // Maximum distance in meters
 
-    collection.createIndex(Indexes.geo2dsphere("location")).toFuture().foreach { indexName =>
-      println(s"Created geospatial index: $indexName")
-    }(ec)
-    
     val query: Document = Document("location" -> Document(
       "$nearSphere" -> Document(
         "$geometry" -> Document(
@@ -93,25 +88,7 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
     ))
 
     collection.find(query).toFuture().map(documents => {
-      val restaurants = documents.map(document => {
-        Restaurant(
-          document.getString("_id"),
-          document.getString("restaurantName"),
-          document.getString("cuisine"),
-          document.getString("openHours"),
-          document.getString("state"),
-          document.getString("cntyGeoid"),
-          document.getString("cntyName"),
-          document.getString("uaGeoid"),
-          document.getString("uaName"),
-          document.getString("msaGeoid"),
-          document.getString("msaName"),
-          document.getString("lon"),
-          document.getString("lat"),
-          document.getString("frequency"),
-          document.getString("isChain"),
-          Location(document.getString("lat").toDouble, document.getString("lon").toDouble))
-      })
+      val restaurants = documents.map(document => getRestaurant(document))
       Ok(Json.toJson(restaurants))
     })
       .recover {
@@ -259,6 +236,35 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
        println("closed")
        Ok("Restaurant is closed")
      }
+     if(check) println("open")
+     else println("closed")
+    val result = if (check) "Restaurant is Open" else "Restaurant is Closed"
+    Ok(result )
+  }
+
+  def checkChainRestaurants(longitude: Double, latitude: Double ): Action[AnyContent]
+  = Action.async { implicit request: Request[AnyContent] =>
+
+    val maxDistance: Double = 5000.00000 // Maximum distance in meters
+
+    val query: Document = Document("location" -> Document(
+      "$nearSphere" -> Document(
+        "$geometry" -> Document(
+          "type" -> "Point",
+          "coordinates" -> List(longitude, latitude)
+        ),
+        "$maxDistance" -> maxDistance
+      )
+    ))
+
+    collection.find(query).toFuture().map(documents => {
+      val restaurants = documents.map(document => getRestaurant(document)).filter(x=> x.isChain=="1" )
+
+      Ok(Json.toJson(restaurants))
+    })
+      .recover {
+        case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
+      }
   }
 }
 

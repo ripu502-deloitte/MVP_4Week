@@ -2,7 +2,7 @@ package models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class Location(latitude:Double,longitude:Double)
+case class Location(longitude:Double,latitude:Double)
 
 
 
