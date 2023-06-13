@@ -266,5 +266,29 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
         case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
       }
   }
+
+  def SearchRestaurants(longitude: Double, latitude: Double ,RestName:String): Action[AnyContent]
+  = Action.async { implicit request: Request[AnyContent] =>
+
+    val maxDistance: Double = 5000.00000 // Maximum distance in meters
+
+    val query: Document = Document("location" -> Document(
+      "$nearSphere" -> Document(
+        "$geometry" -> Document(
+          "type" -> "Point",
+          "coordinates" -> List(longitude, latitude)
+        ),
+        "$maxDistance" -> maxDistance
+      )
+    ))
+
+    collection.find(query).toFuture().map(documents => {
+      val restaurants = documents.map(document => getRestaurant(document)).filter(x=> x.restaurantName.equalsIgnoreCase(RestName) )
+      Ok(Json.toJson(restaurants))
+    })
+      .recover {
+        case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
+      }
+  }
 }
 
