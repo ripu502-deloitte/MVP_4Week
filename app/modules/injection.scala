@@ -86,7 +86,7 @@ class injection extends AbstractModule with AkkaGuiceSupport {
     val executorService = Executors.newFixedThreadPool(50)
     implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(executorService)
 
-    FileIO.fromPath(Paths.get("/home/svinayakamnigam/Downloads/merge-csv.com__64647fa425e55.csv"))
+    FileIO.fromPath(Paths.get("/home/nikhlnu/Downloads/restaurants.csv"))
       .via(Framing.delimiter(ByteString("\n"), 4096)
         .map(_.utf8String)).drop(1)
       .via(mappingFlow)

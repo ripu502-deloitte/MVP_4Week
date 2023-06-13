@@ -122,12 +122,12 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
     val rest = collection.find(query).toFuture()
     val extractedValue = Await.result(rest, 5.seconds)
     val doc=extractedValue.head
-    val fieldValue = doc.getString("lon").toDouble
-    val otherFieldValue = doc.getString("lat").toDouble
+    val restLon = doc.getString("lon").toDouble
+    val restLat = doc.getString("lat").toDouble
     var k,v=0.0
 //    println(fieldValue,otherFieldValue)
 
-    val directionsUrl = s"https://api.mapbox.com/directions-matrix/v1/mapbox/driving/$userLon,$userLat;$fieldValue,$otherFieldValue?sources=0&annotations=distance,duration&approaches = curb;curb&access_token=pk.eyJ1IjoiYWFuY2hhbDAxIiwiYSI6ImNsaWlpNHFsZjAwY28zZG1menU4c29jbzAifQ.IBJUQCFFAOs6BM1bPrEk6Q"
+    val directionsUrl = s"https://api.mapbox.com/directions-matrix/v1/mapbox/driving/$userLon,$userLat;$restLon,$restLat?sources=0&annotations=distance,duration&approaches = curb;curb&access_token=pk.eyJ1IjoiYWFuY2hhbDAxIiwiYSI6ImNsaWlpNHFsZjAwY28zZG1menU4c29jbzAifQ.IBJUQCFFAOs6BM1bPrEk6Q"
 
 
       val response: HttpResponse[String] = Http(directionsUrl).asString
