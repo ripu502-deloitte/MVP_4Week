@@ -79,25 +79,29 @@ class RestaurantController @Inject()(rs:RestaurantService,cc: ControllerComponen
   def searchRestaurantsNearby(longitude: Double, latitude: Double): Action[AnyContent]
   = Action.async { implicit request: Request[AnyContent] =>
 
-    val maxDistance: Double = 5000.00000 // Maximum distance in meters
+//    val maxDistance: Double = 5000.00000 // Maximum distance in meters
+//
+//    val query: Document = Document("location" -> Document(
+//      "$nearSphere" -> Document(
+//        "$geometry" -> Document(
+//          "type" -> "Point",
+//          "coordinates" -> List(longitude, latitude)
+//        ),
+//        "$maxDistance" -> maxDistance
+//      )
+//    ))
 
-    val query: Document = Document("location" -> Document(
-      "$nearSphere" -> Document(
-        "$geometry" -> Document(
-          "type" -> "Point",
-          "coordinates" -> List(longitude, latitude)
-        ),
-        "$maxDistance" -> maxDistance
-      )
-    ))
+//    collection.find(query).toFuture().map(documents => {
+//      val restaurants = documents.map(document => getRestaurant(document))
+//      Ok(Json.toJson(restaurants))
+//    })
+//      .recover {
+//        case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
+//      }
 
-    collection.find(query).toFuture().map(documents => {
-      val restaurants = documents.map(document => getRestaurant(document))
-      Ok(Json.toJson(restaurants))
-    })
-      .recover {
-        case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
-      }
+    rs.searchRestaurantsNearby(longitude, latitude)
+      .map(restaurants => Ok(Json.toJson(restaurants)))
+      .recover{ case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}") }
   }
 
   private def getRestaurant(document: Document) = {
@@ -122,25 +126,25 @@ class RestaurantController @Inject()(rs:RestaurantService,cc: ControllerComponen
   }
 
   def calculateDistance(userLat: Double, userLon: Double,restId:String)= Action { implicit request: Request[AnyContent] =>
-    val query = Document("_id" -> restId)
-    val rest = collection.find(query).toFuture()
-    val extractedValue = Await.result(rest, 5.seconds)
-    val doc=extractedValue.head
-    val restLon = doc.getString("lon").toDouble
-    val restLat = doc.getString("lat").toDouble
-    var k,v=0.0
-//    println(fieldValue,otherFieldValue)
-
-    val directionsUrl = s"https://api.mapbox.com/directions-matrix/v1/mapbox/driving/$userLon,$userLat;$restLon,$restLat?sources=0&annotations=distance,duration&approaches = curb;curb&access_token=pk.eyJ1IjoiYWFuY2hhbDAxIiwiYSI6ImNsaWlpNHFsZjAwY28zZG1menU4c29jbzAifQ.IBJUQCFFAOs6BM1bPrEk6Q"
-
-
-      val response: HttpResponse[String] = Http(directionsUrl).asString
-      val json = Json.parse(response.body)
-
+//    val query = Document("_id" -> restId)
+//    val rest = collection.find(query).toFuture()
+//    val extractedValue = Await.result(rest, 5.seconds)
+//    val doc=extractedValue.head
+//    val restLon = doc.getString("lon").toDouble
+//    val restLat = doc.getString("lat").toDouble
+//    var k,v=0.0
+////    println(fieldValue,otherFieldValue)
+//
+//    val directionsUrl = s"https://api.mapbox.com/directions-matrix/v1/mapbox/driving/$userLon,$userLat;$restLon,$restLat?sources=0&annotations=distance,duration&approaches = curb;curb&access_token=pk.eyJ1IjoiYWFuY2hhbDAxIiwiYSI6ImNsaWlpNHFsZjAwY28zZG1menU4c29jbzAifQ.IBJUQCFFAOs6BM1bPrEk6Q"
+//
+//
+//      val response: HttpResponse[String] = Http(directionsUrl).asString
+//      val json = Json.parse(response.body)
+      val json = rs.calculateDistance(userLat,userLon, restId)
       val distance = (json \ "distances")(0)(1).as[Double]
       val duration = (json \ "durations")(0)(1).as[Double]
-      k=distance
-      v=duration
+      val k=distance
+      val v=duration
 
       println(s"Distance: $distance meters")
       println(s"Duration: $duration seconds")
@@ -272,23 +276,28 @@ class RestaurantController @Inject()(rs:RestaurantService,cc: ControllerComponen
 
   def SearchRestaurants(longitude: Double, latitude: Double ,RestName:String): Action[AnyContent]
   = Action.async { implicit request: Request[AnyContent] =>
-
-    val maxDistance: Double = 5000.00000 // Maximum distance in meters
-
-    val query: Document = Document("location" -> Document(
-      "$nearSphere" -> Document(
-        "$geometry" -> Document(
-          "type" -> "Point",
-          "coordinates" -> List(longitude, latitude)
-        ),
-        "$maxDistance" -> maxDistance
-      )
-    ))
-
-    collection.find(query).toFuture().map(documents => {
-      val restaurants = documents.map(document => getRestaurant(document)).filter(x=> x.restaurantName.equalsIgnoreCase(RestName) )
-      Ok(Json.toJson(restaurants))
-    })
+//
+//    val maxDistance: Double = 5000.00000 // Maximum distance in meters
+//
+//    val query: Document = Document("location" -> Document(
+//      "$nearSphere" -> Document(
+//        "$geometry" -> Document(
+//          "type" -> "Point",
+//          "coordinates" -> List(longitude, latitude)
+//        ),
+//        "$maxDistance" -> maxDistance
+//      )
+//    ))
+//
+//    collection.find(query).toFuture().map(documents => {
+//      val restaurants = documents.map(document => getRestaurant(document)).filter(x=> x.restaurantName.equalsIgnoreCase(RestName) )
+//      Ok(Json.toJson(restaurants))
+//    })
+//      .recover {
+//        case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
+//      }
+    rs.SearchRestaurants(longitude, latitude, RestName)
+      .map(restaurants => Ok(Json.toJson(restaurants)))
       .recover {
         case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
       }
