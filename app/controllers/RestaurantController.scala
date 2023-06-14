@@ -7,6 +7,7 @@ import play.api.libs.json._
 import play.api.libs.ws.WSClient
 import play.api.mvc._
 import scalaj.http.{Http, HttpResponse}
+import services.RestaurantService
 
 import java.time.{DayOfWeek, LocalDate, LocalTime}
 import java.time.format.DateTimeFormatter
@@ -16,7 +17,7 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 
-class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(cc) {
+class RestaurantController @Inject()(rs:RestaurantService,cc: ControllerComponents)(implicit ec: ExecutionContext) extends AbstractController(cc) {
 
   val mongoClient: MongoClient = MongoClient()
   val database: MongoDatabase = mongoClient.getDatabase("test")
@@ -47,24 +48,27 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
   implicit val restaurantSeqWrites: Writes[Seq[Restaurant]] = Writes.seq(restaurantWrites)
 
   def searchByState(state: String): Action[AnyContent] = Action.async { implicit request =>
-    val query = Document("state" -> state.toUpperCase())
-    collection.find(query).limit(5).toFuture()
-      .map(documents => {
-        val restaurants = documents.map(document => getRestaurant(document))
-        Ok(Json.toJson(restaurants))
-      })
+//    val query = Document("state" -> state.toUpperCase())
+//    collection.find(query).limit(5).toFuture()
+//      .map(documents => {
+//        val restaurants = documents.map(document => getRestaurant(document))
+//        Ok(Json.toJson(restaurants))
+//      })
+//      .recover {
+//        case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
+//      }
+    rs.searchByState(state)
+      .map(restaurants => Ok(Json.toJson(restaurants)))
       .recover {
         case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
       }
   }
 
   def searchByCuisine(cuisine: String): Action[AnyContent] = Action.async { implicit request =>
-    val query = Document("cuisine" -> cuisine.toLowerCase().capitalize)
-    collection.find(query).limit(5).toFuture()
-      .map(documents => {
-        val restaurants = documents.map(document => getRestaurant(document))
-        Ok(Json.toJson(restaurants))
-      })
+//    val query = Document("cuisine" -> cuisine.toLowerCase().capitalize)
+//    collection.find(query).limit(5).toFuture()
+    rs.searchByCuisine(cuisine)
+      .map(restaurants => Ok(Json.toJson(restaurants)))
       .recover {
         case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
       }
@@ -150,92 +154,93 @@ class RestaurantController @Inject()(cc: ControllerComponents)(implicit ec: Exec
 
 
   def CheckIfOpen(restId:String)= Action { implicit request: Request[AnyContent] =>
-    val query = Document("_id" -> restId)
-    val rest = collection.find(query).toFuture()
-    val extractedValue = Await.result(rest, 5.seconds)
-    val doc=extractedValue.head
-    val openHoursString = doc.getString("openHours")
-    val allSlots=openHoursString.split("\\|").map(_.trim)
-    val currentDayOfWeek = LocalDate.now().getDayOfWeek.toString
-    val day=currentDayOfWeek.substring(0,3)
-    val currentTime = LocalTime.now()
-    var check:Boolean=false
-    for(oneslot <- allSlots)
-      {
-
-        val daysandtime=oneslot.split("\\s+")
-        daysandtime.foreach(print)
-        var len=daysandtime.length
-        println("length",len)
-        len.toInt match {
-          case 5 => {
-            var openday = daysandtime(0).toString()
-            println("day",openday)
-            var startTime = daysandtime(1).toString.concat(daysandtime(2).toString)
-            println("start",startTime)
-            var endTime = daysandtime(3).toString.concat(daysandtime(4).toString)
-            println("end",endTime)
-            val formatter = DateTimeFormatter.ofPattern("hmma")
-            val startTimefinal = LocalTime.parse(startTime, formatter)
-            val endTimefinal = LocalTime.parse(endTime, formatter)
-            println("stf",startTimefinal)
-            println("etf",endTimefinal)
-            println("ct",currentTime)
-            if (openday.equalsIgnoreCase(day) && (currentTime.isAfter(startTimefinal) && currentTime.isBefore(endTimefinal))) {
-              check = true
-            }
-
-
-          }
-          case 6 => {
-            var startTime = daysandtime(2).toString.concat(daysandtime(3).toString)
-            var endTime = daysandtime(4).toString.concat(daysandtime(5).toString)
-            println("start",startTime)
-            println("end",endTime)
-            val formatter = DateTimeFormatter.ofPattern("hmma")
-            val startTimefinal = LocalTime.parse(startTime, formatter)
-            val endTimefinal = LocalTime.parse(endTime, formatter)
-
-            val daysOfWeek = DayOfWeek.values().toList
-            val list = ListBuffer[String]()
-            for (k <- daysOfWeek) {
-              list += k.toString.substring(0, 3)
-            }
-            var startDay = daysandtime(0).toString().toUpperCase()
-            var endDay = daysandtime(1).toString().toUpperCase()
-            var today = day.toUpperCase()
-            val si = list.indexOf(startDay)
-            val ei = list.indexOf(endDay)
-            val ci = list.indexOf(today)
-            if (si < ei) {
-              if (ci >= si && ci <= ei && (currentTime.isAfter(startTimefinal) && currentTime.isBefore(endTimefinal))) {
-                check = true
-              }
-            }
-            else if (si > ei) {
-              if (ci <= si || ci >= ei && (currentTime.isAfter(startTimefinal) && currentTime.isBefore(endTimefinal))) {
-                check = true
-              }
-            }
-
-
-          }
-
-          case _ => {
-            println("in _")
-            check = false
-          }
-        }
-
-      }
-     if(check) {
-       println("open")
-       Ok("Restaurant is Open")
-     }
-     else {
-       println("closed")
-       Ok("Restaurant is closed")
-     }
+//    val query = Document("_id" -> restId)
+//    val rest = collection.find(query).toFuture()
+//    val extractedValue = Await.result(rest, 5.seconds)
+//    val doc=extractedValue.head
+//    val openHoursString = doc.getString("openHours")
+//    val allSlots=openHoursString.split("\\|").map(_.trim)
+//    val currentDayOfWeek = LocalDate.now().getDayOfWeek.toString
+//    val day=currentDayOfWeek.substring(0,3)
+//    val currentTime = LocalTime.now()
+//    var check:Boolean=false
+//    for(oneslot <- allSlots)
+//      {
+//
+//        val daysandtime=oneslot.split("\\s+")
+//        daysandtime.foreach(print)
+//        var len=daysandtime.length
+//        println("length",len)
+//        len.toInt match {
+//          case 5 => {
+//            var openday = daysandtime(0).toString()
+//            println("day",openday)
+//            var startTime = daysandtime(1).toString.concat(daysandtime(2).toString)
+//            println("start",startTime)
+//            var endTime = daysandtime(3).toString.concat(daysandtime(4).toString)
+//            println("end",endTime)
+//            val formatter = DateTimeFormatter.ofPattern("hmma")
+//            val startTimefinal = LocalTime.parse(startTime, formatter)
+//            val endTimefinal = LocalTime.parse(endTime, formatter)
+//            println("stf",startTimefinal)
+//            println("etf",endTimefinal)
+//            println("ct",currentTime)
+//            if (openday.equalsIgnoreCase(day) && (currentTime.isAfter(startTimefinal) && currentTime.isBefore(endTimefinal))) {
+//              check = true
+//            }
+//
+//
+//          }
+//          case 6 => {
+//            var startTime = daysandtime(2).toString.concat(daysandtime(3).toString)
+//            var endTime = daysandtime(4).toString.concat(daysandtime(5).toString)
+//            println("start",startTime)
+//            println("end",endTime)
+//            val formatter = DateTimeFormatter.ofPattern("hmma")
+//            val startTimefinal = LocalTime.parse(startTime, formatter)
+//            val endTimefinal = LocalTime.parse(endTime, formatter)
+//
+//            val daysOfWeek = DayOfWeek.values().toList
+//            val list = ListBuffer[String]()
+//            for (k <- daysOfWeek) {
+//              list += k.toString.substring(0, 3)
+//            }
+//            var startDay = daysandtime(0).toString().toUpperCase()
+//            var endDay = daysandtime(1).toString().toUpperCase()
+//            var today = day.toUpperCase()
+//            val si = list.indexOf(startDay)
+//            val ei = list.indexOf(endDay)
+//            val ci = list.indexOf(today)
+//            if (si < ei) {
+//              if (ci >= si && ci <= ei && (currentTime.isAfter(startTimefinal) && currentTime.isBefore(endTimefinal))) {
+//                check = true
+//              }
+//            }
+//            else if (si > ei) {
+//              if (ci <= si || ci >= ei && (currentTime.isAfter(startTimefinal) && currentTime.isBefore(endTimefinal))) {
+//                check = true
+//              }
+//            }
+//
+//
+//          }
+//
+//          case _ => {
+//            println("in _")
+//            check = false
+//          }
+//        }
+//
+//      }
+//     if(check) {
+//       println("open")
+//       Ok("Restaurant is Open")
+//     }
+//     else {
+//       println("closed")
+//       Ok("Restaurant is closed")
+//     }
+    val check=rs.CheckIfOpen(restId)
      if(check) println("open")
      else println("closed")
     val result = if (check) "Restaurant is Open" else "Restaurant is Closed"
