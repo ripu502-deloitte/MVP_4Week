@@ -1,12 +1,13 @@
 package services
 
 import akka.http.scaladsl.model.HttpHeader.ParsingResult.Ok
-import models.{Location, Restaurant}
+import models.{Location, Res, Restaurant}
 import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase}
 import play.api.libs.functional.syntax.{toFunctionalBuilderOps, unlift}
-import play.api.libs.json.{JsPath, Json, Writes}
+import play.api.libs.json.{JsPath, JsValue, Json, Writes}
 import play.api.mvc.Results.InternalServerError
 import play.api.mvc.{Action, AnyContent, Request}
+import scalaj.http.{Http, HttpResponse}
 
 import java.time.format.DateTimeFormatter
 import java.time.{DayOfWeek, LocalDate, LocalTime}
@@ -143,6 +144,46 @@ class RestaurantService @Inject()(implicit ec: ExecutionContext) {
         documents => documents.map(document => getRestaurant(document)).toList
 
       )
+  }
+
+  def SearchRestaurants(longitude: Double, latitude: Double ,RestName:String): Future[List[Restaurant]] = {
+
+    val maxDistance: Double = 5000.00000 // Maximum distance in meters
+
+    val query: Document = Document("location" -> Document(
+      "$nearSphere" -> Document(
+        "$geometry" -> Document(
+          "type" -> "Point",
+          "coordinates" -> List(longitude, latitude)
+        ),
+        "$maxDistance" -> maxDistance
+      )
+    ))
+
+    collection.find(query).toFuture().map(
+
+      documents => documents.map(document => getRestaurant(document)).toList.filter(x=> x.restaurantName.equalsIgnoreCase(RestName))
+      )
+
+  }
+
+  def calculateDistance(userLat: Double, userLon: Double,restId:String): JsValue = {
+    val query = Document("_id" -> restId)
+    val rest = collection.find(query).toFuture()
+    val extractedValue = Await.result(rest, 5.seconds)
+    val doc=extractedValue.head
+    val restLon = doc.getString("lon").toDouble
+    val restLat = doc.getString("lat").toDouble
+    var k,v=0.0
+    //    println(fieldValue,otherFieldValue)
+
+    val directionsUrl = s"https://api.mapbox.com/directions-matrix/v1/mapbox/driving/$userLon,$userLat;$restLon,$restLat?sources=0&annotations=distance,duration&approaches = curb;curb&access_token=pk.eyJ1IjoiYWFuY2hhbDAxIiwiYSI6ImNsaWlpNHFsZjAwY28zZG1menU4c29jbzAifQ.IBJUQCFFAOs6BM1bPrEk6Q"
+
+
+    val response: HttpResponse[String] = Http(directionsUrl).asString
+    Json.parse(response.body)
+
+
 
   }
 }
