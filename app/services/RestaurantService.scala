@@ -144,5 +144,25 @@ class RestaurantService @Inject()(implicit ec: ExecutionContext) {
 
       )
 
+
+  }
+
+  def checkChainRestaurants(longitude: Double, latitude: Double):Future[List[Restaurant]] = {
+    val maxDistance: Double = 5000.00000 // Maximum distance in meters
+
+    val query: Document = Document("location" -> Document(
+      "$nearSphere" -> Document(
+        "$geometry" -> Document(
+          "type" -> "Point",
+          "coordinates" -> List(longitude, latitude)
+        ),
+        "$maxDistance" -> maxDistance
+      )
+    ))
+
+    collection.find(query).toFuture().map(documents => {
+       documents.map(document => getRestaurant(document)).filter(x => x.isChain == "1").toList
+    }
+    )
   }
 }
