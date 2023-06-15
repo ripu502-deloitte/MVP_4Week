@@ -15,13 +15,14 @@ import javax.inject.Inject
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.collection.mutable
 
 
 class RestaurantService @Inject()(implicit ec: ExecutionContext) {
 
   val mongoClient: MongoClient = MongoClient()
   val database: MongoDatabase = mongoClient.getDatabase("test")
-  val collection: MongoCollection[Document] = database.getCollection("Restaurants")
+  val collections: MongoCollection[Document] = database.getCollection("Restaurants")
 
 
   private def getRestaurant(document: Document) = {
@@ -47,7 +48,7 @@ class RestaurantService @Inject()(implicit ec: ExecutionContext) {
 
   def searchByState(state: String): Future[List[Restaurant]] = {
     val query = Document("state" -> state.toUpperCase())
-    collection.find(query).limit(5).toFuture()
+    collections.find(query).limit(5).toFuture()
       .map(
         documents => documents.map(document => getRestaurant(document)).toList
 
@@ -57,7 +58,7 @@ class RestaurantService @Inject()(implicit ec: ExecutionContext) {
 
   def CheckIfOpen(restId: String): Boolean = {
     val query = Document("_id" -> restId)
-    val rest = collection.find(query).toFuture()
+    val rest = collections.find(query).toFuture()
     val extractedValue = Await.result(rest, 5.seconds)
     val doc = extractedValue.head
     val openHoursString = doc.getString("openHours")
@@ -137,13 +138,29 @@ class RestaurantService @Inject()(implicit ec: ExecutionContext) {
   }
 
 
-  def searchByCuisine(cuisine: String): Future[List[Restaurant]] = {
-    val query = Document("cuisine" -> cuisine.toLowerCase().capitalize)
-    collection.find(query).limit(5).toFuture()
-      .map(
-        documents => documents.map(document => getRestaurant(document)).toList
+  def searchByCuisine(longitude: Double, latitude: Double ,cuisine: String): Future[List[Restaurant]] = {
+//    val query = Document("cuisine" -> cuisine.toLowerCase().capitalize)
+//    collection.find(query).limit(5).toFuture()
+//      .map(
+//        documents => documents.map(document => getRestaurant(document)).toList
+//
+//      )
+val maxDistance: Double = 5000.00000 // Maximum distance in meters
 
+    val query: Document = Document("location" -> Document(
+      "$nearSphere" -> Document(
+        "$geometry" -> Document(
+          "type" -> "Point",
+          "coordinates" -> List(longitude, latitude)
+        ),
+        "$maxDistance" -> maxDistance
       )
+    ))
+
+    collections.find(query).toFuture().map(
+
+      documents => documents.map(document => getRestaurant(document)).toList.filter(x=> x.cuisine.equalsIgnoreCase(cuisine))
+    )
   }
 
   def SearchRestaurants(longitude: Double, latitude: Double ,RestName:String): Future[List[Restaurant]] = {
@@ -160,7 +177,7 @@ class RestaurantService @Inject()(implicit ec: ExecutionContext) {
       )
     ))
 
-    collection.find(query).toFuture().map(
+    collections.find(query).toFuture().map(
 
       documents => documents.map(document => getRestaurant(document)).toList.filter(x=> x.restaurantName.equalsIgnoreCase(RestName))
       )
@@ -181,7 +198,7 @@ class RestaurantService @Inject()(implicit ec: ExecutionContext) {
       )
     ))
 
-    collection.find(query).toFuture().map(documents => {
+    collections.find(query).toFuture().map(documents => {
        documents.map(document => getRestaurant(document)).filter(x => x.isChain == "1").toList
     }
     )
@@ -189,7 +206,7 @@ class RestaurantService @Inject()(implicit ec: ExecutionContext) {
 
   def calculateDistance(userLat: Double, userLon: Double,restId:String): JsValue = {
     val query = Document("_id" -> restId)
-    val rest = collection.find(query).toFuture()
+    val rest = collections.find(query).toFuture()
     val extractedValue = Await.result(rest, 5.seconds)
     val doc=extractedValue.head
     val restLon = doc.getString("lon").toDouble
@@ -219,10 +236,12 @@ class RestaurantService @Inject()(implicit ec: ExecutionContext) {
       )
     ))
 
-    collection.find(query).toFuture()
+    collections.find(query).toFuture()
       .map(documents => documents
         .map(document => getRestaurant(document)).toList)
   }
+
+
 
 
 }
