@@ -225,7 +225,7 @@ val maxDistance: Double = 5000.00000 // Maximum distance in meters
   }
 
   def searchRestaurantsNearby(longitude: Double, latitude: Double): Future[List[Restaurant]] = {
-    val maxDistance: Double = 5000.00000 // Maximum distance in meters
+    val maxDistance: Double = 2500.00000 // Maximum distance in meters
     val query: Document = Document("location" -> Document(
       "$nearSphere" -> Document(
         "$geometry" -> Document(
