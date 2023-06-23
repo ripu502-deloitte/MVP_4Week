@@ -66,10 +66,10 @@ class RestaurantController @Inject()(rs:RestaurantService,cc: ControllerComponen
 
 
 
-  def searchRestaurantsNearby(longitude: Double, latitude: Double): Action[AnyContent]
+  def searchRestaurantsNearby(longitude: Double, latitude: Double,distance:Double): Action[AnyContent]
   = Action.async { implicit request: Request[AnyContent] =>
 
-    rs.searchRestaurantsNearby(longitude, latitude)
+    rs.searchRestaurantsNearby(longitude, latitude,distance)
       .map(restaurants => Ok(Json.toJson(restaurants)))
       .recover{ case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}") }
   }
