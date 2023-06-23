@@ -6,14 +6,14 @@
 # An example controller showing a sample home page
 GET     /                           controllers.HomeController.index()
 GET     /nearby                     controllers.RestaurantController.searchRestaurantsNearby(longitude:Double ?= -96.726425, latitude:Double ?= 46.87762,distance:Double )
-GET     /chain                      controllers.RestaurantController.checkChainRestaurants(longitude:Double ?= -96.726425, latitude:Double ?= 46.87762)
+GET     /chain                      controllers.RestaurantController.checkChainRestaurants(longitude:Double ?= -96.726425, latitude:Double ?= 46.87762,distance:Double)
 GET     /distance                   controllers.RestaurantController.calculateDistance(userLat:Double ?=46.87762 , userLon:Double ?=-96.726425 , restId:String ?= "02f66b8d-fc94-4185-ad72-0b49e92e7d54")
 GET     /open                       controllers.RestaurantController.CheckIfOpen(restId:String ?= "02f66b8d-fc94-4185-ad72-0b49e92e7d54")
-GET     /search                     controllers.RestaurantController.SearchRestaurants(longitude:Double ?= -96.726425, latitude:Double ?= 46.87762 ,restName:String)
+GET     /search                     controllers.RestaurantController.SearchRestaurants(longitude:Double ?= -96.726425, latitude:Double ?= 46.87762 ,restName:String,distance:Double)
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
 
 
 GET     /restaurants/search/:state  controllers.RestaurantController.searchByState(state: String)
 
-GET     /filterByCuisine/:cuisine   controllers.RestaurantController.searchByCuisine(longitude:Double ?= -96.726425, latitude:Double ?= 46.87762 ,cuisine: String)
+GET     /filterByCuisine/:cuisine   controllers.RestaurantController.searchByCuisine(longitude:Double ?= -96.726425, latitude:Double ?= 46.87762 ,cuisine: String,distance:Double)

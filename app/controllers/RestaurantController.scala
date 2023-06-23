@@ -55,9 +55,9 @@ class RestaurantController @Inject()(rs:RestaurantService,cc: ControllerComponen
       }
   }
 
-  def searchByCuisine(longitude: Double, latitude: Double,cuisine: String): Action[AnyContent] = Action.async { implicit request =>
+  def searchByCuisine(longitude: Double, latitude: Double,cuisine: String,distance:Double): Action[AnyContent] = Action.async { implicit request =>
 
-    rs.searchByCuisine(longitude, latitude, cuisine)
+    rs.searchByCuisine(longitude, latitude, cuisine,distance)
       .map(restaurants => Ok(Json.toJson(restaurants)))
       .recover {
         case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
@@ -121,18 +121,18 @@ class RestaurantController @Inject()(rs:RestaurantService,cc: ControllerComponen
     Ok(result )
   }
 
-  def checkChainRestaurants(longitude: Double, latitude: Double ): Action[AnyContent]
+  def checkChainRestaurants(longitude: Double, latitude: Double,distance:Double): Action[AnyContent]
   = Action.async { implicit request=>
-      rs.checkChainRestaurants(longitude, latitude).map(restaurants => Ok(Json.toJson(restaurants)))
+      rs.checkChainRestaurants(longitude, latitude, distance).map(restaurants => Ok(Json.toJson(restaurants)))
         .recover {
           case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")
         }
   }
 
-  def SearchRestaurants(longitude: Double, latitude: Double ,RestName:String): Action[AnyContent]
+  def SearchRestaurants(longitude: Double, latitude: Double ,RestName:String,distance:Double): Action[AnyContent]
   = Action.async { implicit request: Request[AnyContent] =>
 
-    rs.SearchRestaurants(longitude, latitude, RestName)
+    rs.SearchRestaurants(longitude, latitude, RestName, distance)
       .map(restaurants => Ok(Json.toJson(restaurants)))
       .recover {
         case ex: Exception => InternalServerError(s"An error occurred: ${ex.getMessage}")

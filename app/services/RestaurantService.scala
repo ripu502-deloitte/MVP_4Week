@@ -138,14 +138,13 @@ class RestaurantService @Inject()(implicit ec: ExecutionContext) {
   }
 
 
-  def searchByCuisine(longitude: Double, latitude: Double ,cuisine: String): Future[List[Restaurant]] = {
+  def searchByCuisine(longitude: Double, latitude: Double ,cuisine: String,maxDistance:Double): Future[List[Restaurant]] = {
 //    val query = Document("cuisine" -> cuisine.toLowerCase().capitalize)
 //    collection.find(query).limit(5).toFuture()
 //      .map(
 //        documents => documents.map(document => getRestaurant(document)).toList
 //
 //      )
-val maxDistance: Double = 5000.00000 // Maximum distance in meters
 
     val query: Document = Document("location" -> Document(
       "$nearSphere" -> Document(
@@ -163,9 +162,8 @@ val maxDistance: Double = 5000.00000 // Maximum distance in meters
     )
   }
 
-  def SearchRestaurants(longitude: Double, latitude: Double ,RestName:String): Future[List[Restaurant]] = {
+  def SearchRestaurants(longitude: Double, latitude: Double ,RestName:String,maxDistance:Double): Future[List[Restaurant]] = {
 
-    val maxDistance: Double = 5000.00000 // Maximum distance in meters
 
     val query: Document = Document("location" -> Document(
       "$nearSphere" -> Document(
@@ -185,8 +183,7 @@ val maxDistance: Double = 5000.00000 // Maximum distance in meters
 
   }
 
-  def checkChainRestaurants(longitude: Double, latitude: Double):Future[List[Restaurant]] = {
-    val maxDistance: Double = 5000.00000 // Maximum distance in meters
+  def checkChainRestaurants(longitude: Double, latitude: Double,maxDistance:Double):Future[List[Restaurant]] = {
 
     val query: Document = Document("location" -> Document(
       "$nearSphere" -> Document(
